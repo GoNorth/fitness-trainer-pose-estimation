@@ -92,11 +92,19 @@ MAX_VIDEO_DURATION_SEC = 120  # Max 2 minutes
 def initialize_camera():
     global camera
     if camera is None:
-        camera = cv2.VideoCapture(0)
-        # Optimize camera settings
-        camera.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
-        camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
-        camera.set(cv2.CAP_PROP_FPS, 30)
+        try:
+            print("[INFO] Attempting to initialize camera...")
+            camera = cv2.VideoCapture(0, cv2.CAP_DSHOW)  # Use DirectShow backend for better compatibility
+            if not camera.isOpened():
+                raise Exception("Camera could not be opened. Please check your device.")
+            # Optimize camera settings
+            camera.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+            camera.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+            camera.set(cv2.CAP_PROP_FPS, 30)
+            print("[INFO] Camera initialized successfully.")
+        except Exception as e:
+            print(f"[ERROR] Failed to initialize camera: {e}")
+            camera = None
     return camera
 
 def release_camera():
@@ -126,18 +134,30 @@ def generate_frames():
     pose_estimator = None
 
     # Initialize camera when video feed starts
-    initialize_camera()
+    if not initialize_camera():
+        print("[ERROR] Camera initialization failed. Exiting frame generation.")
+        return
 
     while True:
         if camera is None:
-            initialize_camera()
-            time.sleep(0.1)
-            continue
-            
+            if not initialize_camera():
+                time.sleep(0.1)
+                continue
+
         success, frame = camera.read()
         if not success:
-            continue
-        
+            print("[WARNING] Failed to read frame from camera. Retrying...")
+            retry_count = 0
+            while retry_count < 3 and not success:
+                time.sleep(0.1)  # Short delay before retry
+                success, frame = camera.read()
+                retry_count += 1
+                print(f"[DEBUG] Retry {retry_count}: Frame read {'successful' if success else 'failed'}.)")
+
+            if not success:
+                print("[ERROR] Unable to read frame after multiple retries. Check camera connection.")
+                break
+
         # FPS calculation
         fps_counter += 1
         elapsed = time.time() - fps_start_time
@@ -145,33 +165,33 @@ def generate_frames():
             current_fps = fps_counter / elapsed
             fps_counter = 0
             fps_start_time = time.time()
-        
+
         # Only process frames if an exercise is running
         if exercise_running and exercise_engine.exercise:
             # Lazy load pose estimator only when needed
             if pose_estimator is None:
                 pose_estimator = get_pose_estimator()
-            
+
             # Process with pose estimation
             results = pose_estimator.estimate_pose(frame, exercise_engine.exercise_name)
-            
+
             if results.pose_landmarks:
                 # NEW: Use Exercise Engine to process frame
                 result = exercise_engine.process_frame(frame, results.pose_landmarks.landmark)
-                
+
                 if result["success"]:
                     # Draw status overlay
                     exercise_engine.draw_status_overlay(frame, exercise_goal, sets_goal, sets_completed)
-                    
+
                     # Draw Form Score
                     exercise_engine.draw_form_score(frame)
-                    
+
                     # Check if rep goal is reached for current set
                     current_counter = exercise_engine.get_counter()
                     if current_counter >= exercise_goal:
                         sets_completed += 1
                         exercise_engine.reset()
-                        
+
                         # Check if all sets are completed
                         if sets_completed >= sets_goal:
                             exercise_running = False
