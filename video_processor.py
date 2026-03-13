@@ -221,6 +221,17 @@ def draw_stats_overlay(frame, stats):
 def process_video(video_path: str, exercise_type: str, output_json_path: str, output_video_path: str = None):
     """Process video, draw skeleton, and write results"""
     import mediapipe as mp
+    # Some environments accidentally install a different `mediapipe` package/variant
+    # that doesn't expose the classic `mp.solutions` API used by this project.
+    if not hasattr(mp, "solutions"):
+        raise RuntimeError(
+            "Your installed `mediapipe` module does not provide `mp.solutions`.\n"
+            "Fix: activate this project's virtualenv and reinstall deps:\n"
+            "  python -m pip uninstall -y mediapipe\n"
+            "  python -m pip install -r requirements.txt\n"
+            "Then verify:\n"
+            "  python -c \"import mediapipe as mp; print(hasattr(mp,'solutions'))\""
+        )
     from exercises.engine import ExerciseEngine
     
     results = {

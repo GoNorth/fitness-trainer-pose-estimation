@@ -628,7 +628,7 @@ def process_video_subprocess(video_id):
                 pass
         
         # Process finished - read final results
-        stdout, stderr = process.communicate()
+        stdout, _ = process.communicate()
         
         if process.returncode == 0 and os.path.exists(output_json_path):
             with open(output_json_path, 'r') as f:
@@ -664,8 +664,13 @@ def process_video_subprocess(video_id):
             logger.info(f"Video processing completed: {analysis['reps']} reps, output: {output_video_path}")
         else:
             analysis['status'] = 'error'
-            analysis['error'] = f"Subprocess failed: {stderr.decode()}"
-            logger.error(f"Subprocess error: {stderr.decode()}")
+            # NOTE: stderr is merged into stdout (stderr=STDOUT) and text=True,
+            # so the output is a string in `stdout`.
+            tail = (stdout or '').strip()
+            if len(tail) > 4000:
+                tail = tail[-4000:]
+            analysis['error'] = f"Subprocess failed (exit={process.returncode}). Output:\n{tail}"
+            logger.error(analysis['error'])
         
         # Cleanup JSON file (keep processed video for download)
         try:
@@ -728,6 +733,7 @@ def get_video_status(video_id):
         'grade': analysis['grade'],
         'state': analysis['state'],
         'feedback': analysis['feedback'],
+        'error': analysis.get('error'),
         'has_processed_video': has_processed_video,
         'processed_video_url': f'/api/video/processed/{video_id}' if has_processed_video else None
     })
