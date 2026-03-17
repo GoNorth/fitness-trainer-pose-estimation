@@ -768,7 +768,7 @@ if __name__ == '__main__':
         exercises = get_available_exercises()
         logger.info(f"Available exercises: {exercises}")
         
-        logger.info("Starting the Flask application on http://127.0.0.1:5000")
+        logger.info("Starting the Flask application on http://0.0.0.0:5000")
         print("=" * 50)
         print("🏋️ FITNESS TRAINER WITH POSE ESTIMATION")
         print("=" * 50)
@@ -776,9 +776,9 @@ if __name__ == '__main__':
         for ex in exercises:
             print(f"   • {ex}")
         print("-" * 50)
-        print("🌐 Open http://127.0.0.1:5000 in your browser")
+        print("🌐 Open http://0.0.0.0:5000 (or your server IP) in your browser")
         print("=" * 50)
-        app.run(debug=False, threaded=False, use_reloader=False)
+        app.run(host="0.0.0.0", port=5000, debug=False, threaded=False, use_reloader=False)
     except Exception as e:
         logger.error(f"Failed to start application: {e}")
         traceback.print_exc()
