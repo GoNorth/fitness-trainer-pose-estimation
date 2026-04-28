@@ -5,7 +5,7 @@
 ### 1. 进入项目目录
 
 ```powershell
-cd d:\code4\51_computer\maven\ai_fitness\fitness-trainer-pose-estimation
+cd D:\code4\51_computer\maven\ai_fitness\fitness_poc\pose-app\fitness-trainer-pose-estimation
 ```
 
 ### 2. 创建并激活虚拟环境
